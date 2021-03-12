@@ -457,7 +457,7 @@ GRAPHICS-WINDOW
 1
 1
 ticks
-3.0
+30.0
 
 BUTTON
 8
