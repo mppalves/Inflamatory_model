@@ -9,6 +9,8 @@ In this toy model, bacteria can evolve to try to avoid the immune system by eith
 
 In the fight against an infection, the interaction between different defense mechanisms creates very interesting patterns and defense strategies, some of which can be explored in a simplified way in this model.
 
+![Screen shot](model_screen.png)
+
 ## HOW IT WORKS
 
 #### Moviment

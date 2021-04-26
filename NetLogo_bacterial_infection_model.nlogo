@@ -97,14 +97,14 @@ to setup
   color-blood-vessel
   ask patches [ set max-food food-energy ] ; locking the maximum energy value per cell
   reset-ticks
+
   ;; starting up the cells
   create-macrophages Initial-num-macrophages [
     setxy random-xcor random-ycor
     set size macrophage-size
     set color macrophage-color
     set menergy 100
-    ;set mspeed 0.4
-    set mspeed macrophage-speed ; macrophage-speed = 0.4
+    set mspeed macrophage-speed
 
   ]
 
@@ -114,7 +114,7 @@ to setup
     set color bacteria-color
     set benergy random-normal (min-reproduce-energy / 2) (min-reproduce-energy / 10)
     ;set speed 0.15
-    set speed bacterias-speed ; bacterias-speed = 0.15
+    set speed bacterias-speed
     set gspeed bacterias-speed
     set food-efficiency 1
 
@@ -170,7 +170,7 @@ to go
   tick
 end
 
-;----------------------------- macrophages PROCEDURES ---------------------------
+;----------------------------- MACROPHAGES PROCEDURES ---------------------------
 
 to macrophages-live
   ask macrophages [
@@ -188,7 +188,7 @@ to move-macrophages
  set menergy (menergy - 0.7)  ; macrophages lose energy as they move
   rt random-float 90
   lt random-float 90
-  fd 0.25  * mspeed; The lower the speed, the less severe the population oscillations are.
+  fd 0.25  * mspeed
   follow-chemical
   go-until-empty-here
 end
@@ -213,7 +213,7 @@ to macrophage-commns
   ]
 end
 
-to go-until-empty-here  ;; turtle procedure
+to go-until-empty-here
     while [any? other macrophages-here]
       [ rt random 360
       fd 0.19 ]
@@ -223,12 +223,10 @@ end
 to in-the-flow-macrophage
   ifelse chemical-scent-at-angle 0 > 0 [ follow-chemical ]  [
     if not derme? [ set heading -180 + random-normal 20 5 - 20 ] ]
-  ; if not derme? [set heading -180 + random 10 ]
 end
 
 to in-the-flow-bacteria
   if not derme?  [set heading -180 + random-normal 20 5 - 20]
- ; if not derme? [set heading -180 + random 10 ]
 end
 
 to follow-chemical  ;; turtle procedure
@@ -264,12 +262,12 @@ to macrophage-mitosis ; Bacteria procedure
 end
 
 
-to macrophages-eat-food ; Bacteria procedure
-  ; If there is enough food on this patch, the bacteria eat it and gain energy.
+to macrophages-eat-food
+  ; If there is enough food on this patch, the macrophage eat it and gain energy.
   if food-energy > food-cells-eat [
     if menergy < 500
       [ set menergy menergy + food-cells-eat  / 10 ] ; macrophage gain energy by eating
-        set food-energy (food-energy - food-cells-eat / 500)
+        set food-energy (food-energy - food-cells-eat / 500) ; food-energy is decreased by macrophages in smaller rates than bacteria
   ]
 end
 ;----------------------------- BACTERIA PROCEDURES -----------------------------
@@ -295,11 +293,9 @@ end
 to bacterias-eat-food ; Bacteria procedure
   ; If there is enough food on this patch, the bacteria eat it and gain energy.
   if food-energy > food-cells-eat [
-    ; Bacteria gain 1/5 the energy of the food they eat (trophic level assumption)
-
     if slow-speed? = false [
       set food-energy (food-energy - food-cells-eat)
-      set benergy benergy + food-cells-eat * food-efficiency ] ; bacteria gain energy by eating
+      set benergy benergy + food-cells-eat * food-efficiency ] ; bacteria gain energy by eating and destroying the cells
   ]
 end
 
@@ -334,7 +330,7 @@ to-report dice-increment
   report random-normal 100 20 - 100
 end
 
-;----------------------------- cytosines PROCEDURES ---------------------------
+;----------------------------- CYTOKINES PROCEDURES ---------------------------
 to cytosines-live
   ask cytosines [
     move-cytosines
@@ -342,18 +338,18 @@ to cytosines-live
   ]
 end
 
-to move-cytosines ; Bacterias procedure
-  set cenergy (cenergy - 0.5)  ; Bacteria lose energy as they move
-  fd 0.25 ; The lower the speed, the less severe the population oscillations are.
+to move-cytosines
+  set cenergy (cenergy - 0.5)  ; cytokines lose energy as they move
+  fd 0.25 ;
 
   let trail-energy cenergy
   ask patch-here [
     set cito-chemical cito-chemical + trail-energy
   ]
- if not can-move? 1 [die] ;; drop some chemical
+ if not can-move? 1 [die] ; drop some chemical as it passes over the patches
 end
 
-;----------------------------- mastocytes PROCEDURES -----------------------------
+;----------------------------- MASTOCYTES PROCEDURES -----------------------------
 
 to mastocyte-live
   ask mastocytes [
@@ -364,7 +360,7 @@ end
 
 to anaphylactic
  let mitosis-sign cito-chemical
- if (mitosis-sign > anaphylatic-thld) [ ; anaphylatic-thld 20
+ if (mitosis-sign > anaphylatic-thld) [
     hatch-histamines random-normal 2 1 [
       set size 1
       fd 0.25
@@ -378,7 +374,7 @@ to anaphylactic
 end
 
 
-;----------------------------- histamines PROCEDURES ------------------------------
+;----------------------------- HISTAMINES PROCEDURES ------------------------------
 
 
 to histamina-move
@@ -631,7 +627,7 @@ initial-mastocytes
 initial-mastocytes
 0
 100
-27.0
+50.0
 1
 1
 NIL
@@ -736,7 +732,7 @@ SWITCH
 746
 Mutation?
 Mutation?
-1
+0
 1
 -1000
 
@@ -904,7 +900,6 @@ For the model itself:
 Please cite the NetLogo software as:
 
 * Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
 
 @#$#@#$#@
 default
