@@ -1,24 +1,34 @@
-breed [histaminas histamina]
-breed [macrofagos macrofago]
+breed [histamines histamina]
+breed [macrophages macrophage]
 breed [linfocitos-T linfocito-T]
 breed [bacterias bacteria]
-breed [citosinas citosina]
-breed [mastocitos mastocito]
+breed [cytosines cytosine]
+breed [mastocytes mastocyte]
 
-histaminas-own [ step hspeed age ]
-bacterias-own  [ benergy speed food-efficiency resistance step-cost ]
-macrofagos-own [ menergy mspeed kill? ]
-citosinas-own  [ cenergy ]
-patches-own    [
-                 derme?         ;; if the patch is derme or blood vesel
-                 food-energy    ;; energy available for bacterias
-                 cito-chemical  ;; citocina trace chemical
-                 slow-speed?    ;;
-                 dead?
-                 cito-burst?
-                 max-food
-                 recovered?
-               ]
+histamines-own [ step    ; distance where histamines are thrown
+                 hspeed  ; speed histamines are thrown
+                 age ]   ; age of histamine particle
+
+bacterias-own  [ benergy           ; energy of bacteria
+                 speed             ; current bacteria movement speed
+                 gspeed            ; bacterial genetic speed
+                 food-efficiency ]  ; the efficiency in which bateria transforms tissue in food
+
+macrophages-own [ menergy  ; macrophage energy
+                  mspeed   ; macrophage speed
+                  kill? ]  ; Bolean value true for macrophages that just killed bacteria and false otherwise
+
+cytosines-own  [ cenergy ] ; cytosines kinetic energy
+
+patches-own    [ derme?         ; Boolean determining if the patch is derme or blood vesel
+                 food-energy    ; energy available for bacterias and macrophages
+                 cito-chemical  ; citocina trace chemical
+                 slow-speed?    ; Boolean signaling if the cell is under the effects of histamines
+                 dead?          ; Boolean true for cells with less than 1/5 of max-food left and false otherwise
+                 cito-burst?    ; Booleand true for cells that just died and relaase a burst of cytosines
+                 max-food ]      ; Maximum food available in the cell. This amount is randomized at the beging of the simulation
+
+
 
 globals
 [
@@ -31,12 +41,12 @@ globals
   max-food-energy                ; Max amount of food energy per patch.
   min-reproduce-energy           ; Min energy required for bacteria to reproduce.
   food-cells-eat                 ; Amount of food bacteria eat each time step.
-  macrofago-color                ; determine the color of macrofago cells
-  macrofago-size                 ; determine the size of macrofago cells
-  eaosinofilo-color              ; determine the color of macrofago cells
-  eaosinofilo-size               ; determine the size of macrofago cells
-  histaminas-color
-  histaminas-size
+  macrophage-color                ; determine the color of macrophage cells
+  macrophage-size                 ; determine the size of macrophage cells
+  eaosinofilo-color              ; determine the color of macrophage cells
+  eaosinofilo-size               ; determine the size of macrophage cells
+  histamines-color
+  histamines-size
 ]
 
 
@@ -58,27 +68,28 @@ to setup
   ask main-patches [ set food-energy random-float 100 ]
   ask edge-patches [ set food-energy 0 ]
 
-  set bacteria-color  orange
+  set bacteria-color  37
   set-default-shape bacterias "bacteria"
   set bacteria-size 1
 
-  set macrofago-color  yellow
-  set-default-shape macrofagos "macrofago"
-  set macrofago-size 2
+  set macrophage-color  134
+  set-default-shape macrophages "macrophage"
+  set macrophage-size 2
 
-  set-default-shape mastocitos "mastocito"
+  set-default-shape mastocytes "mastocyte"
   set eaosinofilo-color red
   set eaosinofilo-size 3
 
-  set-default-shape histaminas "dot"
-  set histaminas-color red
-  set histaminas-size 1
+  set-default-shape histamines "dot"
+  set histamines-color red
+  set histamines-size 1
 
   set min-reproduce-energy 50
   set max-food-energy 100
   set food-cells-eat 25
 
-  ask patches [ set cito-burst? false ]
+  ask patches [ set cito-burst? false
+                set slow-speed? false]
 
   ;; coloring scenario
   repeat 3 [diffuse food-energy 1]
@@ -87,34 +98,35 @@ to setup
   ask patches [ set max-food food-energy ] ; locking the maximum energy value per cell
   reset-ticks
   ;; starting up the cells
-  create-macrofagos 50 [
+  create-macrophages Initial-num-macrophages [
     setxy random-xcor random-ycor
-    set size macrofago-size
-    set color macrofago-color
+    set size macrophage-size
+    set color macrophage-color
     set menergy 100
     ;set mspeed 0.4
-    set mspeed macrofago-speed ; macrofago-speed = 0.4
+    set mspeed macrophage-speed ; macrophage-speed = 0.4
 
   ]
 
-  create-bacterias 4 [
+  create-bacterias number-init-bacteria [
     setxy random-xcor random-ycor
     set size bacteria-size
     set color bacteria-color
     set benergy random-normal (min-reproduce-energy / 2) (min-reproduce-energy / 10)
     ;set speed 0.15
     set speed bacterias-speed ; bacterias-speed = 0.15
+    set gspeed bacterias-speed
     set food-efficiency 1
-    set step-cost 0.1
+
 
   ]
 
-  create-mastocitos initial-mastocitos [
+  create-mastocytes initial-mastocytes [
     setxy random-xcor random-ycor
     set size eaosinofilo-size
     set color eaosinofilo-color
   ]
-  kill-mastocitos
+  kill-mastocytes
 
 end
 
@@ -133,7 +145,7 @@ end
 
 to color-citoquina-patch
   ask patches
-    [ if cito-chemical > 0.1 [set pcolor scale-color green cito-chemical  0 1 ]]
+    [ if cito-chemical > 0.1 [set pcolor scale-color 133 cito-chemical  0 1 ]]
 end
 
 
@@ -142,71 +154,81 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 to go
-  macrofagos-live
-  citosinas-live
+  macrophages-live
+  cytosines-live
   bacterias-live
-  diffuse cito-chemical (10 / 100)
+  diffuse cito-chemical (20 / 100)
   color-connective-tissue
   color-blood-vessel
   color-citoquina-patch
-  ask macrofagos [ in-the-flow ]
-  ask bacterias [ in-the-flow ]
+ ; ask macrophages [ in-the-flow-macrophage ]
+  ask bacterias [ in-the-flow-bacteria ]
   ask patches [ ifelse cito-chemical > 1e-6 [ set cito-chemical cito-chemical * (100 - 7) / 100 ] [set cito-chemical 0]]
-  mastocito-live
+  mastocyte-live
   histamina-move
   live-endotelium
   tick
 end
 
-;----------------------------- MACROFAGOS PROCEDURES ---------------------------
+;----------------------------- macrophages PROCEDURES ---------------------------
 
-to macrofagos-live
-  ask macrofagos [
-    move-macrofagos
+to macrophages-live
+  ask macrophages [
+    move-macrophages
     fagocitar-bacteria
-    in-the-flow
-    macrofago-commns
-    macrofago-mitosis
-    macrofagos-eat-food
+    in-the-flow-macrophage
+    macrophage-commns
+    macrophage-mitosis
+    macrophages-eat-food
     if (menergy <= 0 ) [ die ]
   ]
 end
 
-to move-macrofagos
- set menergy (menergy - 1)  ; Bacteria lose energy as they move
+to move-macrophages
+ set menergy (menergy - 0.7)  ; macrophages lose energy as they move
   rt random-float 90
   lt random-float 90
   fd 0.25  * mspeed; The lower the speed, the less severe the population oscillations are.
   follow-chemical
+  go-until-empty-here
 end
 
 to fagocitar-bacteria
   ask bacterias-here [
-    ask macrofagos-here [ set kill? True ]
+    ask macrophages-here [ set kill? True ]
     die
   ]
 end
 
-to macrofago-commns
-  ask macrofagos-here [
+to macrophage-commns
+  ask macrophages-here [
     if kill? = true [
       if random 100 > 90 [
-      hatch-citosinas 1 [ set cenergy random-normal 20 5
+      hatch-cytosines 1 [ set cenergy random-normal 25 5
                         set size 0 ]
       set menergy (menergy - 30)
       ]
     ]
-    if menergy < 100 [set kill? false]
+    if menergy < 300 [set kill? false]
   ]
 end
 
-;to stop-macrofago
-;  set speed 0
-;end
+to go-until-empty-here  ;; turtle procedure
+    while [any? other macrophages-here]
+      [ rt random 360
+      fd 0.19 ]
 
-to in-the-flow
-  ;if not derme? [set heading -180 + random-normal 10 5 - 10]
-  if not derme? [set heading -180 + random 10 ]
+end
+
+to in-the-flow-macrophage
+  ifelse chemical-scent-at-angle 0 > 0 [ follow-chemical ]  [
+    if not derme? [ set heading -180 + random-normal 20 5 - 20 ] ]
+  ; if not derme? [set heading -180 + random 10 ]
+end
+
+to in-the-flow-bacteria
+  if not derme?  [set heading -180 + random-normal 20 5 - 20]
+ ; if not derme? [set heading -180 + random 10 ]
 end
 
 to follow-chemical  ;; turtle procedure
@@ -225,16 +247,16 @@ to-report chemical-scent-at-angle [angle]
   report [cito-chemical] of p
 end
 
-to macrofago-mitosis ; Bacteria procedure
+to macrophage-mitosis ; Bacteria procedure
  let mitosis-sign cito-chemical
- if (mitosis-sign > 100) [
+ if (mitosis-sign > 50) [
     if random-float 100 > 99 [
 
     set cito-chemical 0
     hatch 1 [
       rt random 360
       fd 0.25
-      set color pink
+      set color 134
       set mspeed 0.4
     ]
   ]
@@ -242,11 +264,12 @@ to macrofago-mitosis ; Bacteria procedure
 end
 
 
-to macrofagos-eat-food ; Bacteria procedure
+to macrophages-eat-food ; Bacteria procedure
   ; If there is enough food on this patch, the bacteria eat it and gain energy.
   if food-energy > food-cells-eat [
     if menergy < 500
-      [ set menergy menergy + food-cells-eat  / 10 ] ; bacteria gain energy by eating
+      [ set menergy menergy + food-cells-eat  / 10 ] ; macrophage gain energy by eating
+        set food-energy (food-energy - food-cells-eat / 500)
   ]
 end
 ;----------------------------- BACTERIA PROCEDURES -----------------------------
@@ -273,67 +296,53 @@ to bacterias-eat-food ; Bacteria procedure
   ; If there is enough food on this patch, the bacteria eat it and gain energy.
   if food-energy > food-cells-eat [
     ; Bacteria gain 1/5 the energy of the food they eat (trophic level assumption)
-    set food-energy (food-energy - food-cells-eat)
-    set benergy benergy + food-cells-eat * food-efficiency ; bacteria gain energy by eating
+
+    if slow-speed? = false [
+      set food-energy (food-energy - food-cells-eat)
+      set benergy benergy + food-cells-eat * food-efficiency ] ; bacteria gain energy by eating
   ]
 end
 
 to reproduce-bacteria ; Bacteria procedure
- let dice random 4
+ let increment dice-increment
  if (benergy >  min-reproduce-energy) [
     set benergy (benergy / 2)  ; Parent keeps half the cell's energy
     ; Variable inheritance gives the daughter half the cell's energy too
     hatch 1 [
       rt random 360
       fd 0.25
-
-      ;if dice = 1 [ ; speed bonus
-      ;ifelse dice-increment > 0 [
-      ;  set speed speed + dice-increment * 0.0001
-      ;  set step-cost step-cost + dice-increment * 0.001
-      ;]
-      ;[
-      ;  set speed speed + dice-increment * 0.0001
-      ;    ifelse step-cost + dice-increment * 0.001  <= 0.1 [ set step-cost 0.1] [set step-cost ( step-cost + dice-increment * 0.001 )]
-      ;]
-      ;]
-      ;if dice = 2 [ ; efficiency bonus
-      ;ifelse dice-increment > 0 [
-      ;  set food-efficiency (food-efficiency + dice-increment * 0.001)
-      ;    ifelse speed - dice-increment * 0.0001 <= 0.05 [set speed 0.5] [set speed speed - dice-increment * 0.0001]
-      ;]
-      ;[
-      ;  set food-efficiency (food-efficiency + dice-increment * 0.001)
-      ;  set speed speed - dice-increment * 0.0001
-      ;]
-      ;]
-
-      ;if dice = 2 [ if random-float 100 > 99 [ set killer? true]]
-      ;if dice = 3 [ if random-float 100 > 99 [ set hist-resistent? true]]
-      ;if killer? = true [ set color green ]
-      ;if hist-resistent? = true [ set color red ]
-      ;if faster != 1 [ set color blue ]
-      ;if faster != 1 and killer? = true [ set color yellow ]
-      ;if faster != 1 and hist-resistent? = true [ set color 113 ]
-      ;if faster != 1 and hist-resistent? = true and killer? = true [ set color pink ]
-
+      set speed gspeed
+      if mutation? = true [
+       if random 100 > 90 [ ; speed bonus
+        set gspeed gspeed + increment * 0.001
+        ]
+      ]
+      if gspeed >= 0.1 and gspeed < 0.2 [set color 37 ]
+      if gspeed >= 0.2 and gspeed < 0.35 [set color 74 ]
+      if gspeed >= 0.35 [set color 96 ]
+      ; set color speed * 100
    ]
   ]
 end
+ to-report step-cost
+  let x gspeed * 0.6
+  report x
+ end
+
 
 to-report dice-increment
-  report random-normal 100 50 - 100
+  report random-normal 100 20 - 100
 end
 
-;----------------------------- CITOSINAS PROCEDURES ---------------------------
-to citosinas-live
-  ask citosinas [
-    move-citosinas
+;----------------------------- cytosines PROCEDURES ---------------------------
+to cytosines-live
+  ask cytosines [
+    move-cytosines
     if (cenergy <= 0 ) [ die ]
   ]
 end
 
-to move-citosinas ; Bacterias procedure
+to move-cytosines ; Bacterias procedure
   set cenergy (cenergy - 0.5)  ; Bacteria lose energy as they move
   fd 0.25 ; The lower the speed, the less severe the population oscillations are.
 
@@ -344,10 +353,10 @@ to move-citosinas ; Bacterias procedure
  if not can-move? 1 [die] ;; drop some chemical
 end
 
-;----------------------------- MASTOCITOS PROCEDURES -----------------------------
+;----------------------------- mastocytes PROCEDURES -----------------------------
 
-to mastocito-live
-  ask mastocitos [
+to mastocyte-live
+  ask mastocytes [
    follow-chemical
    anaphylactic
    ]
@@ -356,24 +365,24 @@ end
 to anaphylactic
  let mitosis-sign cito-chemical
  if (mitosis-sign > anaphylatic-thld) [ ; anaphylatic-thld 20
-    hatch-histaminas random-normal 2 1 [
+    hatch-histamines random-normal 2 1 [
       set size 1
       fd 0.25
       set step random-float 100
       set hspeed 0.4
-      set color histaminas-color
-      set size histaminas-size
+      set color histamines-color
+      set size histamines-size
       set age 0
   ]
 ]
 end
 
 
-;----------------------------- HISTAMINAS PROCEDURES ------------------------------
+;----------------------------- histamines PROCEDURES ------------------------------
 
 
 to histamina-move
-  ask histaminas [
+  ask histamines [
     set age age + 1
     set step (step - 1)
      rt random-float 10
@@ -393,12 +402,12 @@ to live-endotelium
  ask blood-vesel [ blood-sprout ]
  ask patches [ signal-derme-death ]
  replenish-derme
- kill-mastocitos
+ kill-mastocytes
 end
 
 to blood-sprout
-  if random-float 100 > 99.99 and cito-chemical > 0 [
-  sprout-macrofagos 1 [ set color blue
+  if random-float 100 > 99.995 and cito-chemical > 0 [
+  sprout-macrophages 1 [ set color 13
    set mspeed  0.4
    set size 2 ]
   ]
@@ -426,16 +435,16 @@ to replenish-derme
   ]
 end
 
-to kill-mastocitos
+to kill-mastocytes
   ask blood-vesel [
-    ask mastocitos-here [ die ]
+    ask mastocytes-here [ die ]
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-214
+217
 13
-954
+957
 754
 -1
 -1
@@ -457,7 +466,7 @@ GRAPHICS-WINDOW
 1
 1
 ticks
-30.0
+1000.0
 
 BUTTON
 8
@@ -515,7 +524,7 @@ PLOT
 13
 1892
 357
-Count cells
+Tissue population of bacteria and immune cells
 time
 # of cells
 0.0
@@ -526,16 +535,18 @@ true
 true
 "" ""
 PENS
-"Bacterias" 1.0 0 -3844592 true "" "plot count bacterias"
-"Macrofagos blood" 1.0 0 -14070903 true "" "plot count macrofagos with [color = blue]"
-"Macrofagos Tissue" 1.0 0 -4699768 true "" "plot count macrofagos with [color = pink]"
+"Bacterias 1st strain" 1.0 0 -3889007 true "" "plot count bacterias with [color = 37]"
+"Blood Macrophages" 1.0 0 -8053223 true "" "plot count macrophages with [color = 13]"
+"Mitotic Macrophages" 1.0 0 -4757638 true "" "plot count macrophages with [color = 134]"
+"Bacteria 2st strain" 1.0 0 -15302303 true "" "plot count bacterias with [color = 74]"
+"Bacteria 3rd strain" 1.0 0 -11033397 true "" "plot count bacterias with [color = 96]"
 
 PLOT
 961
 360
 1891
 510
-Anaphylactic attacks
+Anaphylactic bursts
 Time
 # of histamin particles
 0.0
@@ -546,19 +557,19 @@ true
 true
 "" ""
 PENS
-"Histamins released" 1.0 0 -8053223 true "" "plot count histaminas"
+"Histamins released" 1.0 0 -8053223 true "" "plot count histamines"
 
 PLOT
 961
 512
 1889
 662
-Health status
+Tissue health
 NIL
 NIL
 0.0
 10.0
-0.0
+30.0
 10.0
 true
 false
@@ -574,8 +585,8 @@ SLIDER
 bacterias-speed
 bacterias-speed
 0
-1
-0.15
+0.3
+0.18
 0.01
 1
 NIL
@@ -586,26 +597,26 @@ SLIDER
 113
 209
 146
-macrofago-speed
-macrofago-speed
+macrophage-speed
+macrophage-speed
 0
 1
-0.33
+0.19
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-10
-237
-210
-270
+8
+321
+208
+354
 histamin-effect-duration
 histamin-effect-duration
 0
 1
-0.2
+0.3
 0.01
 1
 NIL
@@ -616,11 +627,11 @@ SLIDER
 173
 210
 206
-initial-mastocitos
-initial-mastocitos
+initial-mastocytes
+initial-mastocytes
 0
 100
-73.0
+27.0
 1
 1
 NIL
@@ -647,131 +658,254 @@ Initial numbers
 1
 
 TEXTBOX
-11
-217
-161
-235
+9
+301
+159
+319
 Immune response
 11
 0.0
 1
 
 SLIDER
-9
-279
-209
-312
+7
+363
+207
+396
 anaphylatic-thld
 anaphylatic-thld
 0
-100
-15.0
+40
+11.0
 1
 1
 NIL
 HORIZONTAL
 
 MONITOR
-5
-325
-220
-370
-NIL
-mean [speed] of bacterias
+8
+409
+208
+454
+Bacteria avg speed
+mean [gspeed] of bacterias
 17
 1
 11
 
 PLOT
-4
-373
-209
-493
-Speed mutation
+6
+462
+206
+582
+Bacterial avg speed
 NIL
 NIL
 0.0
 200.0
+0.0
+0.2
+true
+false
+"" ""
+PENS
+"Speed" 1.0 0 -955883 true "" "plot mean [ gspeed ] of bacterias"
+
+PLOT
+6
+585
+206
+705
+Bacterial avg feed efficiency
+NIL
+NIL
+0.0
+10.0
 0.0
 0.3
 true
 false
 "" ""
 PENS
-"Speed" 1.0 0 -955883 true "" "plot mean [ speed ] of bacterias"
+"default" 1.0 0 -16777216 true "" "plot 1 / mean [ step-cost ] of bacterias "
 
-PLOT
-4
-500
-204
-620
-Food efficiency
-NIL
-NIL
-0.0
-10.0
-0.0
-1.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot mean [ food-efficiency ] of bacterias"
+SWITCH
+6
+713
+116
+746
+Mutation?
+Mutation?
+1
+1
+-1000
 
-PLOT
-5
-623
-205
-743
-plot 2
-NIL
-NIL
-0.0
+SLIDER
+9
+213
+209
+246
+Number-init-bacteria
+Number-init-bacteria
+0
+20
 10.0
-0.0
-0.5
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot mean [ step-cost ] of bacterias"
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+8
+252
+209
+285
+Initial-num-macrophages
+Initial-num-macrophages
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+This model illustrates the dynamics of macrophages, bacteria, and mastocytes in inflammatory processes on vascularized epithelium tissue. It can be thought of as a cross-section of skin where invading bacteria feed of the healthy tissue causing damage while triggering the tissue’s immune response.
+
+The immune response is controlled by cytokines, a category of signaling molecules that mediate and regulate immunity, inflammation, and hematopoiesis. Cytokines are released when bacteria feed on the tissue or when a macrophage phagocytes a bacterium. The high concentration of cytokines creates a positive gradient that recruits more macrophages to an area, stimulates mitoses of macrophages, and the release of histamine by Mastocytes.
+
+In this toy model, bacteria can evolve to try to avoid the immune system by either increasing the speed with which they move while sacrificing feed efficiency or vice-versa, depending on the environment determined by the infection state. Macrophages do not evolve but can have two different origins, native from the tissue (Mitotic macrophages) or recruited from the bloodstream (Blood macrophages), and play a crucial role in controlling the liberation of histamine by the mastocytes.
+
+In the fight against an infection, the interaction between different defense mechanisms creates very interesting patterns and defense strategies, some of which can be explored in a simplified way in this model.
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+#### Moviment
+There are three main types of agents in this model, which are bacteria (visualized as colored ovals), mastocytes (visualized as big red doted circles), and macrophages (visualized as colored spiky circles with a black dot).
+
+Bacteria wander the tissue randomly, destroying and eating epithelium and endothelial cells (visualized as brow and red patches, respectively) to gain energy as they move. In the absence of a cytokine gradient, macrophages move randomly in the healthy tissue and receive nutrition. When macrophages detect cytokines, they move toward the positive cytokine gradient. Mastocytes are fixed cells that do not die, multiply or need to feed. Bacteria and macrophages will die if they run out of energy, for example, by moving extensively on tissue that is severally damaged and low in nutrients.
+
+Bacteria speed defines how fast they move, and feed efficiency determines how much energy the bacteria spend in each clock tick. Increasing speed is an effective way for bacteria to evade the immune defenses, but mutations that increase speed also reduce the feed efficiency as faster movement requires more energy per step. As a result, faster bacteria are more efficient to evade the immune but are more likely to die by starvation.
+
+#### Multiplication and mutations
+Bacteria will divide if they accumulate enough energy. When bacteria divide, they have a chance of mutating the speed and feed efficiency. The mutations are transmitted to the next generations. Bacteria can have different colors to express their level of mutation::
+
+* Light brown: slow speed, high feed efficiency.
+* Green: medium speed, medium feed efficiency.
+* Light blue: fast speed, low feed efficiency.
+
+Macrophages have a chance to undergo mitosis if they are amidst a large concentration of cytokines, originating pink macrophages (mitotic macrophages). Cytokines that fall in the blood vessel can also recruit macrophages from other tissues (blood macrophages) that are red. The two types of macrophages (pink and red) are functionally identical, and the color difference serves to track the type of defense (local or systemic) more active in each stage of the infection.
+
+
+#### Molecular mediators
+Cytokines are released in small quantities when bacteria destroy healthy tissue and at large amounts when a macrophage phagocyte a bacterium. They are represented by the white-pinkish flashes released on tissue patches. Usually, the release of cytokines by dying tissue is enough to recruit nearby macrophages but not sufficient to trigger mastocytes' histamine release. The aim is to represent the crucial role that phagocytosis play in mediating other immune responses.
+
+Histamine (small red dots) released by mastocytes has a short duration on the tissue, but their role in the immune response is paramount. When bacteria feed off a patch that contains active histamine, it loses its mobility and becomes an easy target for macrophages or death by starvation.
+
+#### Agents deaths
+
+Macrophages die when they starve by moving throughout damaged tissue. Bacteria die when they are phagocyted by macrophages or die of starvation by moving in damaged tissue. Histamine disappears after the set duration time of its effect.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+This model can be used to observe the interaction between immune cells and their immune mediators and possible outcomes of an infectious process. 
+
+### Buttons
+#### Setup
+Initializes variables and creates the initial bacteria, macrophages, and mastocytes. 
+#### Go
+Runs the model
+### Sliders and Switches 
+#### Initial-mastocytes
+This slider controls the number of mastocytes in the tissue at the beginning of the simulation.
+#### Number-ini-bacteria
+This slider controls the number of bacteria infecting the tissue at the beginning of the simulation.
+#### Histamine-effect-duration
+This slider defines for how long the released histamine will stay active in the tissue
+#### Initial-bacterias-speed
+This slider defines the initial bacteria speed and its correspondent feed efficiency   
+#### Macrophage-speed
+This slider defines the fixed macrophages speed
+#### Histamine-release-threshold
+This slide determines the minimum concentration of cytokines needed to trigger the release of histamine by mastocytes.
+#### Mutation?
+Switch on and off the possibility of bacteria to suffer mutation.
+
+### Plots and monitors
+
+#### Bacteria avg speed - Monitor
+This monitor shows the current average bacterial speed.
+
+#### Bacteria avg speed - Plot
+This plot shows the evolution of bacterial speed over time.
+
+#### Bacteria avg feed efficiency
+This plot shows the evolution of bacterial feed efficiency over time as a result of mutation and selection pressure.
+
+#### Tissue population of bacteria and immune cells
+Plots the total cell number for each type of cell (bacteria from the 3 possible types and macrophages from the 2 different origins) 
+
+#### Anaphylactic bursts
+Plots the number of active histamine molecules over time.
+
+#### Tissue Health
+Plots the mean amount of food available for bacteria and macrophages. The measurement of tissue food can be understood as a proxy for its health status
+
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+
+When clicking in "go" take some time to watch what is happening in the simulation. Notice how the cytokines signals draw macrophages to where the bacteria are. After successful phagocytosis, observe how the macrophages amplify the cytokines signal triggering other responses such as the mitosis and recruitment of other macrophages and the bursts of histamine by mastocytes. Is this kind of interaction and amplification of signals a common feature in the immune responses? In a living organism, is it true that the larger the immune response to infection, the better?
+
+After a while of playing with the simulation, you will probably observe scenarios where the immune system subsides the infection and others where the infection becomes chronic. What are the relevant factors that determine these two possible outcomes? Is it possible to quell the infection by allowing either macrophages or mastocytes to defend the tissue alone? What are the conditions for that? Is it viable in a living organism?
+
+The macrophages and bacteria depend on living tissue to thrive. Both feed on the nutrients available there. After the installation of a chronic infection, what happens with the overall tissue health (available food)? Does that favor bacteria or macrophages? Does it resemble what happens in reality?
+
+As time goes on, observe how the bacterial population changes and how the number of defense cells and histamine release fluctuates. Is there a relationship between tissue health, histamine releases, and the number of macrophages?
+
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Try changing the initial number of bacterias (bacterial load) to see how that affects the speed and probability of a severe infection.
+
+Another interesting possibility is to observe how natural selection affects the predominant bacteria. Try to switch on and off the mutation knob to see how that affects the chances of the infection to thrive. 
+
+Play with the different histamine characteristics (release threshold and duration). 
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+Try adding other immune cells and signaling molecules such as lymphocytes and interleukins, respectively. 
 
-## NETLOGO FEATURES
+## DISCLAIMER
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
-
-## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+This model was developed as a course requirement. The focus was to develop skills and understanding of agent-based modeling. Therefore,  the data, the description of the interaction between cells, and the biological variables mentioned here are by no means validated. Any conclusion about bacterial infections taken from this simulation will probably be incomplete or wrong.
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Code in this model made use of several solutions found in the models below:
+
+* Woods, P. and Wilensky, U. (2019). NetLogo CRISPR Ecosystem model. http://ccl.northwestern.edu/netlogo/models/CRISPREcosystem. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+* Wilensky, U. (1997). NetLogo Ants model. http://ccl.northwestern.edu/netlogo/models/Ants. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+* Dunham, G., Tisue, S. and Wilensky, U. (2004). NetLogo Erosion model. http://ccl.northwestern.edu/netlogo/models/Erosion. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+## HOW TO CITE
+
+If you mention this model or the NetLogo software in a publication, we ask that you include the citations below.
+
+For the model itself:
+
+* Alves, Marcos (2021).  NetLogo Bacterial Infection Model.  https://github.com/mppalves/NetLogo_Bacterial_Infection_Model.
+
+Please cite the NetLogo software as:
+
+* Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+
 @#$#@#$#@
 default
 true
@@ -952,7 +1086,7 @@ Circle -7500403 true true 146 131 67
 Circle -7500403 false true 60 60 180
 Circle -7500403 false true 59 44 212
 
-macrofago
+macrophage
 true
 0
 Polygon -7500403 true true 60 60 30 105 45 165 30 195 75 240 120 255 180 240 210 210 240 180 240 150 240 120 225 75 195 75 180 45 120 45 90 45 60 60
@@ -963,7 +1097,7 @@ Line -7500403 true 165 225 195 255
 Line -7500403 true 165 60 180 30
 Line -7500403 true 75 75 45 60
 
-mastocito
+mastocyte
 true
 0
 Polygon -7500403 true true 150 150
