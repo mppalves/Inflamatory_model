@@ -819,6 +819,8 @@ Runs the model
 This slider controls the number of mastocytes in the tissue at the beginning of the simulation.
 #### Number-ini-bacteria
 This slider controls the number of bacteria infecting the tissue at the beginning of the simulation.
+#### Initial-num-macrophages
+This slider controls the number of macrophages in the beginning of the simulation.
 #### Histamine-effect-duration
 This slider defines for how long the released histamine will stay active in the tissue
 #### Initial-bacterias-speed
@@ -900,7 +902,6 @@ For the model itself:
 Please cite the NetLogo software as:
 
 * Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-
 @#$#@#$#@
 default
 true

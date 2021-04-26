@@ -9,6 +9,8 @@ In this toy model, bacteria can evolve to try to avoid the immune system by eith
 
 In the fight against an infection, the interaction between different defense mechanisms creates very interesting patterns and defense strategies, some of which can be explored in a simplified way in this model.
 
+### Screen shot
+
 ![Screen shot](model_screen.png)
 
 ## HOW IT WORKS
@@ -18,10 +20,10 @@ There are three main types of agents in this model, which are bacteria (visualiz
 
 Bacteria wander the tissue randomly, destroying and eating epithelium and endothelial cells (visualized as brow and red patches, respectively) to gain energy as they move. In the absence of a cytokine gradient, macrophages move randomly in the healthy tissue and receive nutrition. When macrophages detect cytokines, they move toward the positive cytokine gradient. Mastocytes are fixed cells that do not die, multiply or need to feed. Bacteria and macrophages will die if they run out of energy, for example, by moving extensively on tissue that is severally damaged and low in nutrients.
 
-Bacteria speed defines how fast they move, and feed efficiency determines how much energy the bacteria spend in each clock tick. Increasing speed is an effective way for bacteria to evade the immune defenses, but mutations that increase speed also reduce the feed efficiency as faster movement requires more energy per step. As a result, faster bacteria are more efficient to evade the immune but are more likely to die by starvation.
+Bacteria speed defines how fast they move, and feed efficiency determines how much energy the bacteria spend in each clock tick. Increasing speed is an effective way for bacteria to evade the immune defenses, but mutations that increase speed also reduce the feed efficiency as faster movement requires more energy per step. As a result, faster bacteria are more efficient to evade the immune system but are more likely to die by starvation.
 
 #### Multiplication and mutations
-Bacteria will divide if they accumulate enough energy. When bacteria divide, they have a chance of mutating the speed and feed efficiency. The mutations are transmitted to the next generations. Bacteria can have different colors to express their level of mutation::
+Bacteria will divide if they accumulate enough energy. When bacteria divide, they have a chance of mutating the speed and feed efficiency. The mutations are transmitted to the next generations. Bacteria can have different colors to express their level of mutation:
 
 * Light brown: slow speed, high feed efficiency.
 * Green: medium speed, medium feed efficiency.
@@ -53,6 +55,8 @@ Runs the model
 This slider controls the number of mastocytes in the tissue at the beginning of the simulation.
 #### Number-ini-bacteria
 This slider controls the number of bacteria infecting the tissue at the beginning of the simulation.
+#### Initial-num-macrophages
+This slider controls the number of macrophages in the beginning of the simulation.
 #### Histamine-effect-duration
 This slider defines for how long the released histamine will stay active in the tissue
 #### Initial-bacterias-speed
